@@ -33,7 +33,8 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
     <Card>
       <h2 className="mb-3 text-lg font-semibold">新增 / 编辑交易</h2>
       <p className="mb-1 text-xs text-slate-500">当前账户：仅保存到该用户数据。</p>
-      <p className="mb-3 text-xs text-slate-500">术语提示：R 倍数 = 单笔盈亏 / 初始风险；High2/Low2 = 趋势里的第二次顺势信号。</p>
+      <p className="mb-1 text-xs text-slate-500">术语提示：R 倍数 = 单笔盈亏 / 初始风险；High2/Low2 = 趋势里的第二次顺势信号。</p>
+      <p className="mb-3 text-xs text-slate-500">新手填写建议：R 倍数填本单结果（如 +1.5 / -0.8）；“符合 setup”= 入场前就满足你定义的形态；情绪状态可写“平静/急躁/害怕错过”等。</p>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <input className="input" type="date" value={form.date} onChange={(e)=>setField('date',e.target.value)} />
         <input className="input" placeholder="品种" value={form.symbol} onChange={(e)=>setField('symbol',e.target.value)} />
@@ -41,14 +42,14 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
         <select className="input" value={form.direction} onChange={(e)=>setField('direction',e.target.value as Trade['direction'])}><option>多</option><option>空</option></select>
         <select className="input" value={form.setupType} onChange={(e)=>setField('setupType',e.target.value as SetupType)}>{setupTypes.map(v=><option key={v}>{v}</option>)}</select>
         <select className="input" value={form.marketCondition} onChange={(e)=>setField('marketCondition',e.target.value as MarketCondition)}>{marketConditions.map(v=><option key={v}>{v}</option>)}</select>
-        <input className="input" type="number" placeholder="R 倍数" value={form.rMultiple} onChange={(e)=>setField('rMultiple',Number(e.target.value))} />
+        <input className="input" type="number" step="0.1" placeholder="R 倍数（例如 +1.2 / -0.6）" title="R = (出场价-入场价)/每笔风险，盈利填正数，亏损填负数" value={form.rMultiple} onChange={(e)=>setField('rMultiple',Number(e.target.value))} />
         <select className="input" value={form.errorType} onChange={(e)=>setField('errorType',e.target.value as ErrorType)}>{errorTypes.map(v=><option key={v}>{v}</option>)}</select>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">{([
-        ['符合setup','setupQualified'],['按计划入场','plannedEntry'],['按计划止损','plannedStop'],['提前止盈','earlyTakeProfit'],['追单','chasing'],['报复交易','revengeTrading'],['合格交易','isQualifiedTrade'],
+        ['符合 setup（信号出现后才入场）','setupQualified'],['按计划入场','plannedEntry'],['按计划止损','plannedStop'],['提前止盈','earlyTakeProfit'],['追单','chasing'],['报复交易','revengeTrading'],['合格交易','isQualifiedTrade'],
       ] as const).map(([label,key])=><label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form[key]} onChange={e=>setField(key,e.target.checked as never)} />{label}</label>)}</div>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <input className="input" placeholder="情绪状态" value={form.emotion} onChange={(e)=>setField('emotion',e.target.value)} />
+        <input className="input" placeholder="情绪状态（如：平静、急躁、FOMO）" title="记录下单时的真实状态，越具体越利于复盘" value={form.emotion} onChange={(e)=>setField('emotion',e.target.value)} />
         <input className="input" placeholder="截图链接" value={form.screenshot} onChange={(e)=>setField('screenshot',e.target.value)} />
         <button className="rounded-md bg-slate-800 px-4 py-2 text-white" onClick={submit}>{editingId ? '更新交易' : '新增交易'}</button>
       </div>
