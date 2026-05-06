@@ -29,8 +29,15 @@ export type ErrorType =
   | '逆势交易'
   | '无';
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Trade {
   id: string;
+  userId: string;
   date: string;
   symbol: string;
   timeframe: string;

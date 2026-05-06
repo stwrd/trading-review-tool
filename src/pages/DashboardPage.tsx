@@ -1,3 +1,4 @@
+import GlossaryCard from '../components/GlossaryCard';
 import Card from '../components/Card';
 import { Trade } from '../types';
 
@@ -50,13 +51,16 @@ export default function DashboardPage({ trades }: Props) {
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {metrics.map(([label, value]) => (
-        <Card key={label}>
-          <p className="text-sm text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl font-semibold">{value}</p>
-        </Card>
-      ))}
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {metrics.map(([label, value]) => (
+          <Card key={label}>
+            <p className="text-sm text-slate-500">{label}</p>
+            <p className="mt-2 text-2xl font-semibold">{value}</p>
+          </Card>
+        ))}
+      </div>
+      <GlossaryCard />
     </div>
   );
 }

@@ -1,22 +1,20 @@
 import { useMemo, useState } from 'react';
 import Card from '../components/Card';
+import GlossaryCard from '../components/GlossaryCard';
 import { ErrorType, MarketCondition, SetupType, Trade } from '../types';
 
 const setupTypes: SetupType[] = ['强突破 + 回调继续', '区间假突破反转', 'High 2 / Low 2', '其他'];
-const marketConditions: MarketCondition[] = [
-  '强趋势上涨','弱趋势上涨','强趋势下跌','弱趋势下跌','交易区间','突破失败','趋势转震荡','震荡转趋势',
-];
+const marketConditions: MarketCondition[] = ['强趋势上涨','弱趋势上涨','强趋势下跌','弱趋势下跌','交易区间','突破失败','趋势转震荡','震荡转趋势'];
 const errorTypes: ErrorType[] = ['无','提前入场','追单','提前止盈','不止损','移动止损','报复交易','过度交易','没有 setup 也交易','仓位过大','逆势交易'];
 
-const emptyTrade: Omit<Trade, 'id'> = {
-  date: new Date().toISOString().slice(0, 10), symbol: '', timeframe: '5m', direction: '多', setupType: '强突破 + 回调继续', marketCondition: '交易区间',
-  entryPrice: 0, stopLossPrice: 0, exitPrice: 0, targetPrice: 0, rMultiple: 0, setupQualified: true, plannedEntry: true, plannedStop: true,
-  earlyTakeProfit: false, chasing: false, revengeTrading: false, isQualifiedTrade: true, errorType: '无', emotion: '', preTradePlan: '', postTradeReview: '', screenshot: '',
-};
+interface Props { trades: Trade[]; activeUserId: string; onSave: (trades: Trade[]) => void; }
 
-interface Props { trades: Trade[]; onSave: (trades: Trade[]) => void; }
-
-export default function TradeJournalPage({ trades, onSave }: Props) {
+export default function TradeJournalPage({ trades, activeUserId, onSave }: Props) {
+  const emptyTrade: Omit<Trade, 'id'> = {
+    userId: activeUserId, date: new Date().toISOString().slice(0, 10), symbol: '', timeframe: '5m', direction: '多', setupType: '强突破 + 回调继续', marketCondition: '交易区间',
+    entryPrice: 0, stopLossPrice: 0, exitPrice: 0, targetPrice: 0, rMultiple: 0, setupQualified: true, plannedEntry: true, plannedStop: true,
+    earlyTakeProfit: false, chasing: false, revengeTrading: false, isQualifiedTrade: true, errorType: '无', emotion: '', preTradePlan: '', postTradeReview: '', screenshot: '',
+  };
   const [form, setForm] = useState<Omit<Trade, 'id'>>(emptyTrade);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -25,14 +23,17 @@ export default function TradeJournalPage({ trades, onSave }: Props) {
 
   const submit = () => {
     if (!form.symbol.trim()) return;
-    const next: Trade = { ...form, id: editingId ?? crypto.randomUUID() };
+    const next: Trade = { ...form, userId: activeUserId, id: editingId ?? crypto.randomUUID() };
     const result = editingId ? trades.map((t) => (t.id === editingId ? next : t)) : [next, ...trades];
-    onSave(result); setForm(emptyTrade); setEditingId(null);
+    onSave(result); setForm({ ...emptyTrade, userId: activeUserId }); setEditingId(null);
   };
 
   return <div className="space-y-4">
+    <GlossaryCard />
     <Card>
       <h2 className="mb-3 text-lg font-semibold">新增 / 编辑交易</h2>
+      <p className="mb-1 text-xs text-slate-500">当前账户：仅保存到该用户数据。</p>
+      <p className="mb-3 text-xs text-slate-500">术语提示：R 倍数 = 单笔盈亏 / 初始风险；High2/Low2 = 趋势里的第二次顺势信号。</p>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <input className="input" type="date" value={form.date} onChange={(e)=>setField('date',e.target.value)} />
         <input className="input" placeholder="品种" value={form.symbol} onChange={(e)=>setField('symbol',e.target.value)} />
@@ -52,11 +53,7 @@ export default function TradeJournalPage({ trades, onSave }: Props) {
         <button className="rounded-md bg-slate-800 px-4 py-2 text-white" onClick={submit}>{editingId ? '更新交易' : '新增交易'}</button>
       </div>
     </Card>
-
-    <Card>
-      <h2 className="mb-3 text-lg font-semibold">交易记录</h2>
-      <div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>日期</th><th>品种</th><th>Setup</th><th>R</th><th>错误</th><th>操作</th></tr></thead>
-      <tbody>{sortedTrades.map(t=><tr key={t.id} className="border-t"><td>{t.date}</td><td>{t.symbol}</td><td>{t.setupType}</td><td>{t.rMultiple}</td><td>{t.errorType}</td><td className="space-x-2"><button onClick={()=>{const {id,...rest}=t;setEditingId(id);setForm(rest);}} className="text-blue-600">编辑</button><button onClick={()=>onSave(trades.filter(x=>x.id!==t.id))} className="text-red-600">删除</button></td></tr>)}</tbody></table></div>
-    </Card>
+    <Card><h2 className="mb-3 text-lg font-semibold">交易记录</h2><div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>日期</th><th>品种</th><th>Setup</th><th>R</th><th>错误</th><th>操作</th></tr></thead>
+      <tbody>{sortedTrades.map(t=><tr key={t.id} className="border-t"><td>{t.date}</td><td>{t.symbol}</td><td>{t.setupType}</td><td>{t.rMultiple}</td><td>{t.errorType}</td><td className="space-x-2"><button onClick={()=>{const {id,...rest}=t;setEditingId(id);setForm(rest);}} className="text-blue-600">编辑</button><button onClick={()=>onSave(trades.filter(x=>x.id!==t.id))} className="text-red-600">删除</button></td></tr>)}</tbody></table></div></Card>
   </div>;
 }
