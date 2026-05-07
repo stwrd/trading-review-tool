@@ -4,8 +4,7 @@ import GlossaryCard from '../components/GlossaryCard';
 import { ErrorType, MarketCondition, SetupType, Trade } from '../types';
 
 const MAX_SCREENSHOT_SIZE_MB = 1;
-const UPLOAD_SIGN_API = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_UPLOAD_SIGN_API;
-const HAS_SIGN_API = Boolean(UPLOAD_SIGN_API);
+const UPLOAD_SIGN_API = '/api/oss/sign';
 
 const setupTypes: SetupType[] = ['强突破 + 回调继续', '区间假突破反转', 'High 2 / Low 2', '其他'];
 const marketConditions: MarketCondition[] = ['强趋势上涨','弱趋势上涨','强趋势下跌','弱趋势下跌','交易区间','突破失败','趋势转震荡','震荡转趋势'];
@@ -30,7 +29,6 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
   const setField = <K extends keyof Omit<Trade, 'id'>>(key: K, value: Omit<Trade, 'id'>[K]) => setForm((p) => ({ ...p, [key]: value }));
 
   const requestSignedUpload = async (file: File): Promise<UploadSignResponse> => {
-    if (!UPLOAD_SIGN_API) throw new Error('缺少 VITE_UPLOAD_SIGN_API 配置');
     const response = await fetch(UPLOAD_SIGN_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -41,7 +39,6 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
   };
 
   const requestSignedView = async (objectKey: string): Promise<string> => {
-    if (!UPLOAD_SIGN_API) throw new Error('缺少 VITE_UPLOAD_SIGN_API 配置');
     const response = await fetch(UPLOAD_SIGN_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -134,8 +131,7 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
         <input className="input file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs" type="file" accept="image/*" title="也可选择本地图片上传到 OSS" onChange={(e)=>onScreenshotUpload(e.target.files?.[0])} />
         <button className="rounded-md bg-slate-800 px-4 py-2 text-white" onClick={submit}>{editingId ? '更新交易' : '新增交易'}</button>
       </div>
-      <p className="mt-2 text-xs text-slate-500">截图支持两种最便捷方式：1）截图后在上方输入框直接粘贴；2）选择本地图片文件。上传成功后自动保存对象键并通过预签名 URL 访问（不在前端保存 AK/SK）。</p>
-      {!HAS_SIGN_API && <p className="mt-1 text-xs text-red-600">未配置 VITE_UPLOAD_SIGN_API：请在项目根目录创建 .env.local，并设置 VITE_UPLOAD_SIGN_API=http://你的后端地址/oss/sign，重启 npm run dev 后生效。</p>}
+      <p className="mt-2 text-xs text-slate-500">截图支持两种最便捷方式：1）截图后在上方输入框直接粘贴；2）选择本地图片文件。默认走 Vercel 一体化 /api/oss/sign，上传到已配置的阿里云 OSS。</p>
       {uploadHint && <p className="mt-1 text-xs text-amber-600">{uploadHint}</p>}
     </Card>
     <Card><h2 className="mb-3 text-lg font-semibold">交易记录</h2><div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>日期</th><th>品种</th><th>Setup</th><th>R</th><th>截图</th><th>错误</th><th>操作</th></tr></thead>

@@ -50,38 +50,20 @@ ALIYUN_OSS_REGION=oss-cn-hangzhou
 ALIYUN_OSS_BUCKET=your-bucket
 ```
 
-### 2) 前端环境变量（示例）
-```bash
-# 前端只保存你的后端签名接口地址
-VITE_UPLOAD_SIGN_API=https://api.example.com/oss/sign
-```
-
-### 3) 推荐上传流程
-1. 前端请求 `VITE_UPLOAD_SIGN_API`；
-2. 后端使用 AK/SK 生成短时效签名（或 STS 临时凭证）；
+### 2) 推荐上传流程（Vercel 一体化）
+1. 前端请求同项目内置接口 `/api/oss/sign`；
+2. Vercel Function 使用服务端 OSS 环境变量生成短时效签名；
 3. 前端用签名直传 OSS；
-4. 上传成功后把文件 URL 写入 `screenshot` 字段保存。
+4. 上传成功后把对象键写入 `screenshot` 字段保存。
 
-### 4) 最小权限建议
+### 3) 最小权限建议
 - 为上传创建独立 RAM 用户/角色，仅授予目标 bucket 指定目录写入权限。
 - 凭证有效期尽量短（如 1~10 分钟）。
 - 限制允许上传的文件类型和大小，并在后端校验。
 
 
-## 本地开发：如何配置 `VITE_UPLOAD_SIGN_API`
-1. 在项目根目录新建 `.env.local`（不要提交到仓库）；
-2. 写入：
-```bash
-VITE_UPLOAD_SIGN_API=http://localhost:3000/oss/sign
-```
-3. 重启前端开发服务：`npm run dev`；
-4. 打开页面后再尝试粘贴/上传截图。
-
-> 注意：改完 `.env.local` 后必须重启 Vite，浏览器刷新通常不够。
-
-
 ## Supabase 数据接入（前端）
-当前版本已支持把交易数据写入 Supabase（未配置时自动回退 localStorage）。
+当前版本已支持把交易数据写入 Supabase（未配置或失败会直接报错，不再回退 localStorage）。
 
 ### 1) 配置 `.env.local`
 ```bash
@@ -94,4 +76,25 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ### 3) 行为说明
 - 配置了 Supabase：页面启动时拉取云端交易数据；保存交易时同步写入云端。
-- 未配置 Supabase：继续使用本地 localStorage。
+- 未配置 Supabase：前端会显示错误提示，交易数据功能不可用。
+
+
+## Vercel 一体化部署（前端 + 签名函数）
+本仓库新增了 `api/oss/sign.ts`，可作为 Vercel Serverless Function 使用。
+
+### 1) 前端调用地址
+- 默认调用 `/api/oss/sign`（本项目内置，无需独立后端）。
+
+### 2) 在 Vercel 配置服务端环境变量
+```bash
+OSS_REGION=oss-cn-hangzhou
+OSS_BUCKET=your-bucket
+OSS_ACCESS_KEY_ID=your-ak
+OSS_ACCESS_KEY_SECRET=your-sk
+OSS_UPLOAD_PREFIX=trades
+OSS_SIGN_EXPIRES=600
+```
+
+### 3) 接口协议
+- `POST /api/oss/sign` + `{ action: "upload", filename, contentType }` -> `{ uploadUrl, objectKey }`
+- `POST /api/oss/sign` + `{ action: "view", objectKey }` -> `{ viewUrl }`
