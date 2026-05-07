@@ -3,11 +3,17 @@ import Card from '../components/Card';
 import GlossaryCard from '../components/GlossaryCard';
 import { ErrorType, MarketCondition, SetupType, Trade } from '../types';
 
+const MAX_SCREENSHOT_SIZE_MB = 1;
+const UPLOAD_SIGN_API = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_UPLOAD_SIGN_API;
+
 const setupTypes: SetupType[] = ['强突破 + 回调继续', '区间假突破反转', 'High 2 / Low 2', '其他'];
 const marketConditions: MarketCondition[] = ['强趋势上涨','弱趋势上涨','强趋势下跌','弱趋势下跌','交易区间','突破失败','趋势转震荡','震荡转趋势'];
 const errorTypes: ErrorType[] = ['无','提前入场','追单','提前止盈','不止损','移动止损','报复交易','过度交易','没有 setup 也交易','仓位过大','逆势交易'];
 
 interface Props { trades: Trade[]; activeUserId: string; onSave: (trades: Trade[]) => void; }
+
+interface UploadSignResponse { uploadUrl: string; objectKey: string; }
+interface ViewSignResponse { viewUrl: string; }
 
 export default function TradeJournalPage({ trades, activeUserId, onSave }: Props) {
   const emptyTrade: Omit<Trade, 'id'> = {
@@ -17,15 +23,76 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
   };
   const [form, setForm] = useState<Omit<Trade, 'id'>>(emptyTrade);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploadHint, setUploadHint] = useState('');
 
   const sortedTrades = useMemo(() => [...trades].sort((a, b) => b.date.localeCompare(a.date)), [trades]);
   const setField = <K extends keyof Omit<Trade, 'id'>>(key: K, value: Omit<Trade, 'id'>[K]) => setForm((p) => ({ ...p, [key]: value }));
+
+  const requestSignedUpload = async (file: File): Promise<UploadSignResponse> => {
+    if (!UPLOAD_SIGN_API) throw new Error('缺少 VITE_UPLOAD_SIGN_API 配置');
+    const response = await fetch(UPLOAD_SIGN_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upload', filename: file.name, contentType: file.type }),
+    });
+    if (!response.ok) throw new Error('获取上传签名失败');
+    return response.json() as Promise<UploadSignResponse>;
+  };
+
+  const requestSignedView = async (objectKey: string): Promise<string> => {
+    if (!UPLOAD_SIGN_API) throw new Error('缺少 VITE_UPLOAD_SIGN_API 配置');
+    const response = await fetch(UPLOAD_SIGN_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'view', objectKey }),
+    });
+    if (!response.ok) throw new Error('获取访问签名失败');
+    const data = await response.json() as ViewSignResponse;
+    return data.viewUrl;
+  };
+
+  const onScreenshotUpload = async (file?: File) => {
+    if (!file) return;
+    if (file.size > MAX_SCREENSHOT_SIZE_MB * 1024 * 1024) {
+      setUploadHint(`图片超过 ${MAX_SCREENSHOT_SIZE_MB}MB，建议压缩后再上传。`);
+      return;
+    }
+
+    try {
+      setUploadHint('正在请求 OSS 上传签名...');
+      const signed = await requestSignedUpload(file);
+      const uploadResponse = await fetch(signed.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+      if (!uploadResponse.ok) throw new Error('上传到 OSS 失败');
+      setField('screenshot', signed.objectKey);
+      setUploadHint('截图已上传到 OSS。');
+    } catch (error) {
+      setUploadHint(error instanceof Error ? error.message : '上传失败');
+    }
+  };
+
+  const openScreenshot = async (screenshot: string) => {
+    if (!screenshot) return;
+    if (screenshot.startsWith('http') || screenshot.startsWith('data:')) {
+      window.open(screenshot, '_blank', 'noreferrer');
+      return;
+    }
+    try {
+      const viewUrl = await requestSignedView(screenshot);
+      window.open(viewUrl, '_blank', 'noreferrer');
+    } catch (error) {
+      setUploadHint(error instanceof Error ? error.message : '打开截图失败');
+    }
+  };
 
   const submit = () => {
     if (!form.symbol.trim()) return;
     const next: Trade = { ...form, userId: activeUserId, id: editingId ?? crypto.randomUUID() };
     const result = editingId ? trades.map((t) => (t.id === editingId ? next : t)) : [next, ...trades];
-    onSave(result); setForm({ ...emptyTrade, userId: activeUserId }); setEditingId(null);
+    onSave(result); setForm({ ...emptyTrade, userId: activeUserId }); setEditingId(null); setUploadHint('');
   };
 
   return <div className="space-y-4">
@@ -48,13 +115,16 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
       <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">{([
         ['符合 setup（信号出现后才入场）','setupQualified'],['按计划入场','plannedEntry'],['按计划止损','plannedStop'],['提前止盈','earlyTakeProfit'],['追单','chasing'],['报复交易','revengeTrading'],['合格交易','isQualifiedTrade'],
       ] as const).map(([label,key])=><label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form[key]} onChange={e=>setField(key,e.target.checked as never)} />{label}</label>)}</div>
-      <div className="mt-3 grid gap-3 md:grid-cols-3">
+      <div className="mt-3 grid gap-3 md:grid-cols-4">
         <input className="input" placeholder="情绪状态（如：平静、急躁、FOMO）" title="记录下单时的真实状态，越具体越利于复盘" value={form.emotion} onChange={(e)=>setField('emotion',e.target.value)} />
-        <input className="input" placeholder="截图链接" value={form.screenshot} onChange={(e)=>setField('screenshot',e.target.value)} />
+        <input className="input" placeholder="截图对象键（可选）" value={form.screenshot} onChange={(e)=>setField('screenshot',e.target.value)} />
+        <input className="input file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs" type="file" accept="image/*" title="可直接上传截图到 OSS；上传后会保存 objectKey" onChange={(e)=>onScreenshotUpload(e.target.files?.[0])} />
         <button className="rounded-md bg-slate-800 px-4 py-2 text-white" onClick={submit}>{editingId ? '更新交易' : '新增交易'}</button>
       </div>
+      <p className="mt-2 text-xs text-slate-500">截图访问方式：前端通过签名接口换取预签名 URL，再打开图片（不在前端保存 AK/SK）。</p>
+      {uploadHint && <p className="mt-1 text-xs text-amber-600">{uploadHint}</p>}
     </Card>
-    <Card><h2 className="mb-3 text-lg font-semibold">交易记录</h2><div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>日期</th><th>品种</th><th>Setup</th><th>R</th><th>错误</th><th>操作</th></tr></thead>
-      <tbody>{sortedTrades.map(t=><tr key={t.id} className="border-t"><td>{t.date}</td><td>{t.symbol}</td><td>{t.setupType}</td><td>{t.rMultiple}</td><td>{t.errorType}</td><td className="space-x-2"><button onClick={()=>{const {id,...rest}=t;setEditingId(id);setForm(rest);}} className="text-blue-600">编辑</button><button onClick={()=>onSave(trades.filter(x=>x.id!==t.id))} className="text-red-600">删除</button></td></tr>)}</tbody></table></div></Card>
+    <Card><h2 className="mb-3 text-lg font-semibold">交易记录</h2><div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>日期</th><th>品种</th><th>Setup</th><th>R</th><th>截图</th><th>错误</th><th>操作</th></tr></thead>
+      <tbody>{sortedTrades.map(t=><tr key={t.id} className="border-t"><td>{t.date}</td><td>{t.symbol}</td><td>{t.setupType}</td><td>{t.rMultiple}</td><td>{t.screenshot ? <button className="text-blue-600 underline" onClick={()=>openScreenshot(t.screenshot)}>查看</button> : '—'}</td><td>{t.errorType}</td><td className="space-x-2"><button onClick={()=>{const {id,...rest}=t;setEditingId(id);setForm(rest);}} className="text-blue-600">编辑</button><button onClick={()=>onSave(trades.filter(x=>x.id!==t.id))} className="text-red-600">删除</button></td></tr>)}</tbody></table></div></Card>
   </div>;
 }
