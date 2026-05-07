@@ -42,12 +42,13 @@ npm run build
 > 结论：AK/SK 只放后端，不进前端。前端只拿临时上传凭证。
 
 ### 1) 服务端环境变量（示例）
+> 命名统一：本项目签名函数只读取 `OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET`，请不要使用 `ALIYUN_OSS_ACCESS_*`。
 ```bash
 # 仅后端可见，禁止以 VITE_ 前缀暴露给前端
-ALIYUN_OSS_ACCESS_KEY_ID=your-ak
-ALIYUN_OSS_ACCESS_KEY_SECRET=your-sk
-ALIYUN_OSS_REGION=oss-cn-hangzhou
-ALIYUN_OSS_BUCKET=your-bucket
+OSS_ACCESS_KEY_ID=your-ak
+OSS_ACCESS_KEY_SECRET=your-sk
+OSS_REGION=oss-cn-hangzhou
+OSS_BUCKET=your-bucket
 ```
 
 ### 2) 推荐上传流程（Vercel 一体化）
