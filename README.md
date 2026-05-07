@@ -66,3 +66,32 @@ VITE_UPLOAD_SIGN_API=https://api.example.com/oss/sign
 - 为上传创建独立 RAM 用户/角色，仅授予目标 bucket 指定目录写入权限。
 - 凭证有效期尽量短（如 1~10 分钟）。
 - 限制允许上传的文件类型和大小，并在后端校验。
+
+
+## 本地开发：如何配置 `VITE_UPLOAD_SIGN_API`
+1. 在项目根目录新建 `.env.local`（不要提交到仓库）；
+2. 写入：
+```bash
+VITE_UPLOAD_SIGN_API=http://localhost:3000/oss/sign
+```
+3. 重启前端开发服务：`npm run dev`；
+4. 打开页面后再尝试粘贴/上传截图。
+
+> 注意：改完 `.env.local` 后必须重启 Vite，浏览器刷新通常不够。
+
+
+## Supabase 数据接入（前端）
+当前版本已支持把交易数据写入 Supabase（未配置时自动回退 localStorage）。
+
+### 1) 配置 `.env.local`
+```bash
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 2) 建表示例（`trades`）
+建议字段与前端 `Trade` 接口一致，主键 `id` 使用 text/varchar。
+
+### 3) 行为说明
+- 配置了 Supabase：页面启动时拉取云端交易数据；保存交易时同步写入云端。
+- 未配置 Supabase：继续使用本地 localStorage。

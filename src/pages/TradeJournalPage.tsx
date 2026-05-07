@@ -5,6 +5,7 @@ import { ErrorType, MarketCondition, SetupType, Trade } from '../types';
 
 const MAX_SCREENSHOT_SIZE_MB = 1;
 const UPLOAD_SIGN_API = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_UPLOAD_SIGN_API;
+const HAS_SIGN_API = Boolean(UPLOAD_SIGN_API);
 
 const setupTypes: SetupType[] = ['强突破 + 回调继续', '区间假突破反转', 'High 2 / Low 2', '其他'];
 const marketConditions: MarketCondition[] = ['强趋势上涨','弱趋势上涨','强趋势下跌','弱趋势下跌','交易区间','突破失败','趋势转震荡','震荡转趋势'];
@@ -134,6 +135,7 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
         <button className="rounded-md bg-slate-800 px-4 py-2 text-white" onClick={submit}>{editingId ? '更新交易' : '新增交易'}</button>
       </div>
       <p className="mt-2 text-xs text-slate-500">截图支持两种最便捷方式：1）截图后在上方输入框直接粘贴；2）选择本地图片文件。上传成功后自动保存对象键并通过预签名 URL 访问（不在前端保存 AK/SK）。</p>
+      {!HAS_SIGN_API && <p className="mt-1 text-xs text-red-600">未配置 VITE_UPLOAD_SIGN_API：请在项目根目录创建 .env.local，并设置 VITE_UPLOAD_SIGN_API=http://你的后端地址/oss/sign，重启 npm run dev 后生效。</p>}
       {uploadHint && <p className="mt-1 text-xs text-amber-600">{uploadHint}</p>}
     </Card>
     <Card><h2 className="mb-3 text-lg font-semibold">交易记录</h2><div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>日期</th><th>品种</th><th>Setup</th><th>R</th><th>截图</th><th>错误</th><th>操作</th></tr></thead>

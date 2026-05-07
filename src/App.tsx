@@ -1,16 +1,23 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
-import { getActiveUserId, getTrades, getUsers, saveActiveUserId, saveTrades, saveUsers } from './data/storage';
+import { getActiveUserId, getTrades, getUsers, hasSupabaseConfig, saveActiveUserId, saveTrades, saveUsers } from './data/storage';
 import DashboardPage from './pages/DashboardPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import TradeJournalPage from './pages/TradeJournalPage';
 import { Trade, UserProfile } from './types';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function App() {
   const [users, setUsers] = useState<UserProfile[]>(() => getUsers());
   const [activeUserId, setActiveUserId] = useState<string>(() => getActiveUserId());
-  const [allTrades, setAllTrades] = useState<Trade[]>(() => getTrades());
+  const [allTrades, setAllTrades] = useState<Trade[]>([]);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getTrades().then(setAllTrades).catch((error) => {
+      setSyncError(error instanceof Error ? error.message : '读取 Supabase 失败');
+    });
+  }, []);
 
   const trades = useMemo(() => allTrades.filter((t) => t.userId === activeUserId), [allTrades, activeUserId]);
 
@@ -20,11 +27,16 @@ export default function App() {
     return [...stats.entries()].sort((a, b) => b[1] - a[1]);
   }, [trades]);
 
-  const persistTrades = (nextUserTrades: Trade[]) => {
+  const persistTrades = async (nextUserTrades: Trade[]) => {
     const others = allTrades.filter((t) => t.userId !== activeUserId);
     const next = [...others, ...nextUserTrades];
-    setAllTrades(next);
-    saveTrades(next);
+    try {
+      await saveTrades(next);
+      setAllTrades(next);
+      setSyncError(null);
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : '保存 Supabase 失败');
+    }
   };
 
   const handleSwitchUser = (userId: string) => {
@@ -42,6 +54,8 @@ export default function App() {
 
   return (
     <Layout users={users} activeUserId={activeUserId} onSwitchUser={handleSwitchUser} onAddUser={handleAddUser}>
+      {!hasSupabaseConfig() && <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">未配置 Supabase，交易数据功能不可用（已移除 localStorage 回退）。</div>}
+      {syncError && <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{syncError}</div>}
       <Routes>
         <Route path="/" element={<DashboardPage trades={trades} />} />
         <Route path="/journal" element={<TradeJournalPage trades={trades} activeUserId={activeUserId} onSave={persistTrades} />} />
