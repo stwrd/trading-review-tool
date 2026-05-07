@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { ClipboardEvent, useMemo, useState } from 'react';
 import Card from '../components/Card';
 import GlossaryCard from '../components/GlossaryCard';
 import { ErrorType, MarketCondition, SetupType, Trade } from '../types';
@@ -88,6 +88,18 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
     }
   };
 
+
+  const onScreenshotPaste = async (event: ClipboardEvent<HTMLInputElement>) => {
+    const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith('image/'));
+    if (!imageItem) {
+      setUploadHint('剪贴板里没有检测到图片，请先截图再粘贴。');
+      return;
+    }
+    event.preventDefault();
+    const file = imageItem.getAsFile();
+    await onScreenshotUpload(file ?? undefined);
+  };
+
   const submit = () => {
     if (!form.symbol.trim()) return;
     const next: Trade = { ...form, userId: activeUserId, id: editingId ?? crypto.randomUUID() };
@@ -117,11 +129,11 @@ export default function TradeJournalPage({ trades, activeUserId, onSave }: Props
       ] as const).map(([label,key])=><label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form[key]} onChange={e=>setField(key,e.target.checked as never)} />{label}</label>)}</div>
       <div className="mt-3 grid gap-3 md:grid-cols-4">
         <input className="input" placeholder="情绪状态（如：平静、急躁、FOMO）" title="记录下单时的真实状态，越具体越利于复盘" value={form.emotion} onChange={(e)=>setField('emotion',e.target.value)} />
-        <input className="input" placeholder="截图对象键（可选）" value={form.screenshot} onChange={(e)=>setField('screenshot',e.target.value)} />
-        <input className="input file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs" type="file" accept="image/*" title="可直接上传截图到 OSS；上传后会保存 objectKey" onChange={(e)=>onScreenshotUpload(e.target.files?.[0])} />
+        <input className="input" placeholder="直接 Ctrl/Cmd+V 粘贴截图（推荐）" title="点击此输入框后，直接粘贴截图即可自动上传 OSS" onPaste={onScreenshotPaste} readOnly />
+        <input className="input file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs" type="file" accept="image/*" title="也可选择本地图片上传到 OSS" onChange={(e)=>onScreenshotUpload(e.target.files?.[0])} />
         <button className="rounded-md bg-slate-800 px-4 py-2 text-white" onClick={submit}>{editingId ? '更新交易' : '新增交易'}</button>
       </div>
-      <p className="mt-2 text-xs text-slate-500">截图访问方式：前端通过签名接口换取预签名 URL，再打开图片（不在前端保存 AK/SK）。</p>
+      <p className="mt-2 text-xs text-slate-500">截图支持两种最便捷方式：1）截图后在上方输入框直接粘贴；2）选择本地图片文件。上传成功后自动保存对象键并通过预签名 URL 访问（不在前端保存 AK/SK）。</p>
       {uploadHint && <p className="mt-1 text-xs text-amber-600">{uploadHint}</p>}
     </Card>
     <Card><h2 className="mb-3 text-lg font-semibold">交易记录</h2><div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>日期</th><th>品种</th><th>Setup</th><th>R</th><th>截图</th><th>错误</th><th>操作</th></tr></thead>
