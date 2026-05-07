@@ -99,3 +99,11 @@ OSS_SIGN_EXPIRES=600
 ### 3) 接口协议
 - `POST /api/oss/sign` + `{ action: "upload", filename, contentType }` -> `{ uploadUrl, objectKey }`
 - `POST /api/oss/sign` + `{ action: "view", objectKey }` -> `{ viewUrl }`
+
+
+### 常见报错：`Invalid supabaseUrl`
+- `VITE_SUPABASE_URL` 必须是完整 URL（以 `https://` 开头），例如：
+  - ✅ `https://xxxx.supabase.co`
+  - ❌ `xxxx.supabase.co`
+  - ❌ `"https://xxxx.supabase.co"`（不要带额外引号）
+- 修改 `.env.local` 后请重启 `npm run dev`。

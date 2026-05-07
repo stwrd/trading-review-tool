@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
-import { getActiveUserId, getTrades, getUsers, hasSupabaseConfig, saveActiveUserId, saveTrades, saveUsers } from './data/storage';
+import { getActiveUserId, getSupabaseConfigError, getTrades, getUsers, hasSupabaseConfig, saveActiveUserId, saveTrades, saveUsers } from './data/storage';
 import DashboardPage from './pages/DashboardPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import TradeJournalPage from './pages/TradeJournalPage';
@@ -11,7 +11,7 @@ export default function App() {
   const [users, setUsers] = useState<UserProfile[]>(() => getUsers());
   const [activeUserId, setActiveUserId] = useState<string>(() => getActiveUserId());
   const [allTrades, setAllTrades] = useState<Trade[]>([]);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(getSupabaseConfigError());
 
   useEffect(() => {
     getTrades().then(setAllTrades).catch((error) => {

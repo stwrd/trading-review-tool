@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Trade, UserProfile } from '../types';
 
 const USERS_KEY = 'trading-review-tool:users';
@@ -8,9 +8,16 @@ const SUPABASE_URL = (import.meta as ImportMeta & { env?: Record<string, string>
 const SUPABASE_ANON_KEY = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_SUPABASE_ANON_KEY;
 const TRADE_TABLE = 'trades';
 
-const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
+let supabase: SupabaseClient | null = null;
+let supabaseConfigError: string | null = null;
+
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  try {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (error) {
+    supabaseConfigError = error instanceof Error ? error.message : 'Supabase 初始化失败';
+  }
+}
 
 const defaultUser: UserProfile = {
   id: 'default-user',
@@ -46,6 +53,7 @@ export function saveActiveUserId(userId: string): void {
 }
 
 function assertSupabaseReady() {
+  if (supabaseConfigError) throw new Error(`Supabase 配置错误：${supabaseConfigError}`);
   if (!supabase) throw new Error('未配置 Supabase（VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY）');
 }
 
@@ -69,4 +77,8 @@ export async function saveTrades(trades: Trade[]): Promise<void> {
 
 export function hasSupabaseConfig(): boolean {
   return Boolean(supabase);
+}
+
+export function getSupabaseConfigError(): string | null {
+  return supabaseConfigError;
 }

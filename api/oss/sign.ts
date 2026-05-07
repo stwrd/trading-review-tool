@@ -28,7 +28,10 @@ export default async function handler(req: any, res: any) {
     bucket: OSS_BUCKET,
     accessKeyId: OSS_ACCESS_KEY_ID,
     accessKeySecret: OSS_ACCESS_KEY_SECRET,
+    secure: true,
   });
+
+  const forceHttps = (url: string) => url.replace(/^http:\/\//i, 'https://');
 
   const body: Body = req.body || {};
   const expires = Number(OSS_SIGN_EXPIRES) || 600;
@@ -36,16 +39,16 @@ export default async function handler(req: any, res: any) {
   if (body.action === 'upload') {
     const ext = (body.filename || 'image.png').split('.').pop() || 'png';
     const objectKey = `${OSS_UPLOAD_PREFIX}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${ext}`;
-    const uploadUrl = client.signatureUrl(objectKey, {
+    const uploadUrl = forceHttps(client.signatureUrl(objectKey, {
       method: 'PUT',
       expires,
       'Content-Type': body.contentType || 'application/octet-stream',
-    });
+    }));
     return res.status(200).json({ uploadUrl, objectKey });
   }
 
   if (body.action === 'view' && body.objectKey) {
-    const viewUrl = client.signatureUrl(body.objectKey, { method: 'GET', expires });
+    const viewUrl = forceHttps(client.signatureUrl(body.objectKey, { method: 'GET', expires }));
     return res.status(200).json({ viewUrl });
   }
 
