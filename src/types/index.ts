@@ -45,9 +45,11 @@ export interface Trade {
   setupType: SetupType;
   marketCondition: MarketCondition;
   entryPrice: number;
+  entryTime: string;
   stopLossPrice: number;
   exitPrice: number;
   targetPrice: number;
+  exitTime: string;
   rMultiple: number;
   setupQualified: boolean;
   plannedEntry: boolean;
